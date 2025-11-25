@@ -1,1 +1,7 @@
 docker run -d --name otel-collector -p 4317:4317 -p 4318:4318 -p 55679:55679 -v G:\Documents\Testing\Prototype-Observability\config\otel-collector-config.yaml:/etc/otelcol/config.yaml otel/opentelemetry-collector-contrib:latest --config=/etc/otelcol/config.yaml
+
+if error "Ports are not available: listen tcp 0.0.0.0/XXXXX: bind: An attempt was made to access a socket in a way forbidden by its access permissions"
+
+net stop winnat
+docker start otel-collector
+net start winnat

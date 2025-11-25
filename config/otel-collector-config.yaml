@@ -23,14 +23,125 @@ processors:
   
   attributes:
     actions:
+      # Authentication & Credentials
       - key: user.password
         action: delete
+      - key: password
+        action: delete
+      - key: user.token
+        action: delete
+      - key: auth.token
+        action: delete
+      - key: authorization
+        action: delete
+      - key: api.key
+        action: delete
+      - key: api_key
+        action: delete
+      - key: access.token
+        action: delete
+      - key: refresh.token
+        action: delete
+      - key: bearer.token
+        action: delete
+      - key: jwt
+        action: delete
+      - key: session.id
+        action: delete
+      - key: session.token
+        action: delete
+      
+      # Personal Identifiable Information (PII)
       - key: user.ssn
         action: delete
-      - key: user.credit_card
+      - key: ssn
+        action: delete
+      - key: social.security.number
         action: delete
       - key: user.email
         action: delete
+      - key: email
+        action: delete
+      - key: email.address
+        action: delete
+      - key: user.phone
+        action: delete
+      - key: phone
+        action: delete
+      - key: phone.number
+        action: delete
+      - key: user.address
+        action: delete
+      - key: address
+        action: delete
+      - key: user.ip
+        action: delete
+      - key: ip.address
+        action: delete
+      - key: user.name
+        action: delete
+      - key: full.name
+        action: delete
+      - key: user.dob
+        action: delete
+      - key: date.of.birth
+        action: delete
+      - key: birthdate
+        action: delete
+      
+      # Financial Information
+      - key: user.credit_card
+        action: delete
+      - key: credit.card
+        action: delete
+      - key: credit.card.number
+        action: delete
+      - key: card.number
+        action: delete
+      - key: cvv
+        action: delete
+      - key: card.cvv
+        action: delete
+      - key: bank.account
+        action: delete
+      - key: account.number
+        action: delete
+      - key: routing.number
+        action: delete
+      - key: iban
+        action: delete
+      - key: payment.method
+        action: delete
+      
+      # Health Information
+      - key: medical.record
+        action: delete
+      - key: health.record
+        action: delete
+      - key: patient.id
+        action: delete
+      - key: diagnosis
+        action: delete
+      - key: prescription
+        action: delete
+      
+      # Database & System Credentials
+      - key: db.password
+        action: delete
+      - key: database.password
+        action: delete
+      - key: db.connection.string
+        action: delete
+      - key: connection.string
+        action: delete
+      - key: private.key
+        action: delete
+      - key: secret.key
+        action: delete
+      - key: encryption.key
+        action: delete
+      
+      # Upsert service instance ID
       - key: service.instance.id
         value: ${env:HOSTNAME}
         action: upsert

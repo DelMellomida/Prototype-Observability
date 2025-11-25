@@ -117,4 +117,4 @@ G:\Documents\Testing\Prototype-Observability\NET\Sample\obj\Debug\net10.0\swae.b
 G:\Documents\Testing\Prototype-Observability\NET\Sample\obj\Debug\net10.0\Sample.csproj.Up2Date
 G:\Documents\Testing\Prototype-Observability\NET\Sample\obj\Debug\net10.0\Sample.genruntimeconfig.cache
 G:\Documents\Testing\Prototype-Observability\NET\Sample\obj\Debug\net10.0\ref\Sample.dll
-G:\Documents\Testing\Prototype-Observability\NET\Sample\obj\Debug\net10.0\staticwebassets.upToDateCheck.txt
+G:\Documents\Testing\Prototype-Observability\NET\sample\obj\Debug\net10.0\Sample.sourcelink.json

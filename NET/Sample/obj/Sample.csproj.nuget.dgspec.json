@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "G:\\Documents\\Testing\\Prototype-Observability\\NET\\Sample\\Sample.csproj": {}
+    "G:\\Documents\\Testing\\Prototype-Observability\\NET\\sample\\Sample.csproj": {}
   },
   "projects": {
-    "G:\\Documents\\Testing\\Prototype-Observability\\NET\\Sample\\Sample.csproj": {
+    "G:\\Documents\\Testing\\Prototype-Observability\\NET\\sample\\Sample.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "G:\\Documents\\Testing\\Prototype-Observability\\NET\\Sample\\Sample.csproj",
+        "projectUniqueName": "G:\\Documents\\Testing\\Prototype-Observability\\NET\\sample\\Sample.csproj",
         "projectName": "Sample",
-        "projectPath": "G:\\Documents\\Testing\\Prototype-Observability\\NET\\Sample\\Sample.csproj",
+        "projectPath": "G:\\Documents\\Testing\\Prototype-Observability\\NET\\sample\\Sample.csproj",
         "packagesPath": "C:\\Users\\p8351\\.nuget\\packages\\",
-        "outputPath": "G:\\Documents\\Testing\\Prototype-Observability\\NET\\Sample\\obj\\",
+        "outputPath": "G:\\Documents\\Testing\\Prototype-Observability\\NET\\sample\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
