@@ -1,0 +1,93 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    timeout: 1s
+    send_batch_size: 1024
+  
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 512
+  
+  resource:
+    attributes:
+      - key: service.namespace
+        value: "production"
+        action: insert
+  
+  attributes:
+    actions:
+      - key: user.password
+        action: delete
+      - key: user.ssn
+        action: delete
+      - key: user.credit_card
+        action: delete
+      - key: user.email
+        action: delete
+      - key: service.instance.id
+        value: ${env:HOSTNAME}
+        action: upsert
+  
+  filter:
+    traces:
+      span:
+        - 'attributes["service.name"] == "SampleService"'
+  
+  resourcedetection:
+    detectors: [env, system]
+    timeout: 5s
+
+exporters:
+  otlp/traces:
+    endpoint: "ingest.us.signoz.cloud:443"
+    headers:
+      "signoz-ingestion-key": "ea2516c8-7bb0-4170-af62-107e9cb841bc"
+    tls:
+      insecure: false
+
+  otlp/metrics:
+    endpoint: "ingest.us.signoz.cloud:443"
+    headers:
+      "signoz-ingestion-key": "ea2516c8-7bb0-4170-af62-107e9cb841bc"
+    tls:
+      insecure: false
+
+  otlp/logs:
+    endpoint: "ingest.us.signoz.cloud:443"
+    headers:
+      "signoz-ingestion-key": "ea2516c8-7bb0-4170-af62-107e9cb841bc"
+    tls:
+      insecure: false
+
+  debug:
+    verbosity: detailed
+
+extensions:
+  health_check:
+    endpoint: "0.0.0.0:13133"
+
+service:
+  extensions: [health_check]
+  
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, resourcedetection, resource, attributes, filter, batch]
+      exporters: [otlp/traces, debug]
+    
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, resourcedetection, resource, attributes, batch]
+      exporters: [otlp/metrics]
+    
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, resourcedetection, resource, attributes, batch]
+      exporters: [otlp/logs]
