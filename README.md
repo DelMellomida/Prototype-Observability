@@ -236,41 +236,171 @@ curl http://localhost:8888/metrics
 
 ## 🔍 Log Structure Examples
 
+Both .NET and Python services produce consistent, structured logs following the unified standard. Here are real examples from SigNoz:
+
 ### INFO Log (Successful Request)
+
+**Python:**
 ```json
 {
+  "body": "Request finished HTTP/1.1 GET http://localhost:8000/weatherforecast/days/5 - 200 462 application/json 1.996ms",
+  "date": "2025-11-27T08:04:44.039716Z",
   "timestamp": "2025-11-27T08:04:44.039716Z",
   "severity_text": "INFO",
-  "body": "Request finished HTTP/1.1 GET /weatherforecast/days/5 - 200",
+  "severity_number": 9,
   "trace_id": "88847db0b8983565f659b12c7cb75e00",
   "span_id": "64981d8150d2d729",
+  "trace_flags": 1,
+  "scope_name": "app.middleware.observability_middleware",
   "attributes": {
-    "service.name": "SampleServicePython",
     "Method": "GET",
     "Path": "/weatherforecast/days/5",
     "StatusCode": 200,
-    "ElapsedMilliseconds": 1.996
+    "ElapsedMilliseconds": 1.996,
+    "Protocol": "HTTP/1.1",
+    "ContentType": "application/json",
+    "ContentLength": "462",
+    "Host": "localhost:8000",
+    "RequestId": "fae471c5-c92a-4844-9988-54b213637039",
+    "message_template_text": "Request finished {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {StatusCode} {ContentLength} {ContentType} {ElapsedMilliseconds}ms"
+  },
+  "resources": {
+    "service.name": "SampleServicePython",
+    "service.namespace": "production",
+    "host.name": "eb223a9b9dde",
+    "os.type": "linux",
+    "telemetry.sdk.language": "python",
+    "telemetry.sdk.name": "opentelemetry",
+    "telemetry.sdk.version": "1.38.0"
+  }
+}
+```
+
+**.NET:**
+```json
+{
+  "body": "Executed endpoint 'Sample.Controllers.WeatherForecastController.GetByDays (Sample)'",
+  "date": "2025-11-26T19:41:48.5458178Z",
+  "timestamp": "2025-11-26T19:41:48.5458178Z",
+  "severity_text": "Information",
+  "severity_number": 9,
+  "trace_id": "c6e9a8f2b48cd51dd557ea2ed7624c05",
+  "span_id": "c81ac9c1b7b85a7b",
+  "trace_flags": 0,
+  "scope_name": "Microsoft.AspNetCore.Routing.EndpointMiddleware",
+  "attributes": {
+    "EndpointName": "Sample.Controllers.WeatherForecastController.GetByDays (Sample)",
+    "RequestPath": "/weatherforecast/days/7",
+    "ConnectionId": "0HNHD4F45S2DU",
+    "RequestId": "0HNHD4F45S2DU:00000001",
+    "ParentId": "0000000000000000",
+    "environment": "Development",
+    "message_template.text": "Executed endpoint '{EndpointName}'"
+  },
+  "resources": {
+    "service.name": "SampleServiceNET",
+    "service.namespace": "production",
+    "service.version": "1.0.0",
+    "deployment.environment": "Development",
+    "host.name": "2bd0a45cedc3",
+    "os.type": "linux",
+    "telemetry.sdk.language": "dotnet",
+    "telemetry.sdk.name": "serilog",
+    "telemetry.sdk.version": "4.2.0-main-057a8c1+057a8c1712d1268a4d7f0952819c535e45c56647"
   }
 }
 ```
 
 ### ERROR Log (Validation Failure)
+
+**Python:**
 ```json
 {
-  "timestamp": "2025-11-27T08:08:47.301Z",
-  "severity_text": "ERROR",
   "body": "Validation failed in WeatherForecastController.GetByDays: days=6",
+  "date": "2025-11-27T08:08:47.3013227Z",
+  "timestamp": "2025-11-27T08:08:47.3013227Z",
+  "severity_text": "ERROR",
+  "severity_number": 17,
   "trace_id": "159154b103d536e80a7b2e87e15964b3",
   "span_id": "1d4dd18374917aa9",
+  "trace_flags": 1,
+  "scope_name": "main.controllers.WeatherForecastController",
   "attributes": {
-    "service.name": "SampleServicePython",
     "Controller": "WeatherForecastController",
     "Action": "GetByDays",
     "Days": 6,
-    "RequestPath": "/weatherforecast/days/6"
+    "RequestPath": "/weatherforecast/days/6",
+    "message_template_text": "Validation failed in {Controller}.{Action}: days={Days}"
+  },
+  "resources": {
+    "service.name": "SampleServicePython",
+    "service.namespace": "production",
+    "host.name": "eb223a9b9dde",
+    "os.type": "linux",
+    "telemetry.sdk.language": "python",
+    "telemetry.sdk.name": "opentelemetry",
+    "telemetry.sdk.version": "1.38.0"
   }
 }
 ```
+
+**.NET:**
+```json
+{
+  "body": "Validation failed in WeatherForecastController.GetByDays: days=6",
+  "date": "2025-11-27T08:07:32.7002267Z",
+  "timestamp": "2025-11-27T08:07:32.7002267Z",
+  "severity_text": "Error",
+  "severity_number": 17,
+  "trace_id": "24ed135b797b3f0c847275c4ca71728a",
+  "span_id": "8c7f63b4354a3890",
+  "trace_flags": 0,
+  "scope_name": "Sample.Controllers.WeatherForecastController",
+  "attributes": {
+    "Controller": "WeatherForecastController",
+    "Action": "GetByDays",
+    "Days": 6,
+    "ActionId": "77f439e4-0bba-4561-81f2-2865a5e83bf5",
+    "ActionName": "Sample.Controllers.WeatherForecastController.GetByDays (Sample)",
+    "RequestPath": "/weatherforecast/days/6",
+    "ConnectionId": "0HNHDHFV9E87U",
+    "RequestId": "0HNHDHFV9E87U:00000001",
+    "ParentId": "47417675d5507eae",
+    "environment": "Development",
+    "message_template.text": "Validation failed in {Controller}.{Action}: days={Days}"
+  },
+  "resources": {
+    "service.name": "SampleServiceNET",
+    "service.namespace": "production",
+    "service.version": "1.0.0",
+    "deployment.environment": "Development",
+    "host.name": "eb223a9b9dde",
+    "os.type": "linux",
+    "service.instance.id": "DESKTOP-DO1ESVO",
+    "telemetry.sdk.language": "dotnet",
+    "telemetry.sdk.name": "serilog",
+    "telemetry.sdk.version": "4.2.0-main-057a8c1+057a8c1712d1268a4d7f0952819c535e45c56647"
+  }
+}
+```
+
+### Key Observations
+
+**Consistent Fields Across Both Stacks:**
+- ✅ `trace_id` and `span_id` - For distributed tracing correlation
+- ✅ `timestamp` and `date` - ISO 8601 formatted timestamps
+- ✅ `severity_text` and `severity_number` - Standardized log levels
+- ✅ `body` - Human-readable log message
+- ✅ `attributes` - Structured context (Controller, Action, RequestPath, etc.)
+- ✅ `resources` - Service metadata (name, version, environment, SDK info)
+- ✅ `message_template_text` - Template for structured logging
+
+**Stack-Specific Differences:**
+- .NET includes additional ASP.NET Core context (`ActionId`, `ConnectionId`, `ParentId`)
+- Python uses simpler attribute names but maintains the same structure
+- Both produce identical log patterns for the same business logic (validation errors)
+
+This demonstrates the **unified standard in action** - different technology stacks producing consistent, queryable telemetry data!
 
 ## 🔒 Security Features
 
@@ -349,8 +479,6 @@ When both .NET and Python services are running and calling each other:
 ├── NET/
 │   └── Sample/                      # .NET sample application
 │       ├── Controllers/
-│       ├── Enricher/
-│       ├── Extensions/
 │       ├── Middleware/
 │       └── Program.cs               # Observability initialization
 ├── Python/
@@ -497,9 +625,12 @@ When adding new services or modifying observability code:
 
 ## 📞 Support
 
+- **On-Call Rotation:** [Your Team's On-Call Schedule]
 - **SigNoz Support:** support@signoz.io
+- **Internal Slack:** #observability-help
 
 ---
 
 **Last Updated:** November 27, 2025  
-**Version:** 0.0.2
+**Version:** 1.0.0  
+**Maintained by:** Observability Team
