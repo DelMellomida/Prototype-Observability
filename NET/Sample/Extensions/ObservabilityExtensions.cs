@@ -16,12 +16,14 @@ public static class ObservabilityExtensions
     {
         // 1. Load Configuration
         var serviceName = builder.Configuration.GetValue<string>("OTEL_SERVICE_NAME", "SampleServiceNET");
+        var serviceVersion = builder.Configuration.GetValue<string>("SERVICE_VERSION", "1.0.0");
         var otlpEndpoint = builder.Configuration.GetValue<string>("OpenTelemetry:OtlpEndpoint", "http://localhost:4317");
         var enableOtel = builder.Configuration.GetValue<bool>("OpenTelemetry:Enabled", true);
 
         var resourceAttributes = new Dictionary<string, object>
         {
             ["service.name"] = serviceName,
+            ["service.version"] = serviceVersion,
             ["deployment.environment"] = builder.Environment.EnvironmentName,
             ["service.instance.id"] = Environment.MachineName
         };
@@ -32,15 +34,16 @@ public static class ObservabilityExtensions
             .Enrich.FromLogContext()
             .Enrich.With<ActivityEnricher>()
             .Enrich.WithProperty("service.name", serviceName)
+            .Enrich.WithProperty("service.version", serviceVersion)
             .Enrich.WithProperty("environment", builder.Environment.EnvironmentName)
             .WriteTo.Console(new JsonFormatter(renderMessage: true));
 
-        // Add OpenTelemetry sink for Serilog when enabled so logs also flow to OTLP backends
+        // Add OpenTelemetry sink for Serilog when enabled
         if (enableOtel)
         {
             loggerConfig.WriteTo.OpenTelemetry(options =>
             {
-                options.Endpoint = otlpEndpoint; // Serilog sink expects string endpoint
+                options.Endpoint = otlpEndpoint;
                 options.Protocol = OtlpProtocol.Grpc;
                 options.ResourceAttributes = resourceAttributes;
             });
@@ -55,7 +58,7 @@ public static class ObservabilityExtensions
         builder.Services.AddSingleton(activitySource);
         builder.Services.AddSingleton<ITelemetryHelper, TelemetryHelper>();
 
-        // 4. Configure OpenTelemetry (traces + metrics + optional log exporter via Serilog sink)
+        // 4. Configure OpenTelemetry (traces + metrics)
         if (enableOtel)
         {
             // Sampling Logic
@@ -65,7 +68,9 @@ public static class ObservabilityExtensions
             var sampler = new ParentBasedSampler(new TraceIdRatioBasedSampler(samplingRatio));
 
             builder.Services.AddOpenTelemetry()
-                .ConfigureResource(r => r.AddService(serviceName).AddAttributes(resourceAttributes))
+                .ConfigureResource(r => r
+                    .AddService(serviceName, serviceVersion: serviceVersion)
+                    .AddAttributes(resourceAttributes))
                 .WithMetrics(metrics =>
                 {
                     metrics
@@ -78,17 +83,18 @@ public static class ObservabilityExtensions
                 .WithTracing(tracing =>
                 {
                     tracing
-                        .AddSource(serviceName) // Important: create spans from our ActivitySource
+                        .AddSource(serviceName)
                         .SetSampler(sampler)
                         .AddAspNetCoreInstrumentation(options =>
                         {
-                            // Middleware handles exceptions explicitly
                             options.RecordException = false;
                             options.EnrichWithHttpRequest = (activity, req) =>
                             {
                                 activity.SetTag("http.method", req.Method);
                                 activity.SetTag("http.target", req.Path);
                                 activity.SetTag("http.host", req.Host.Value);
+                                activity.SetTag("http.scheme", req.Scheme);
+                                activity.SetTag("http.user_agent", req.Headers["User-Agent"].ToString());
                             };
                             options.EnrichWithHttpResponse = (activity, resp) =>
                             {

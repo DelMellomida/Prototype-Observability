@@ -3,7 +3,8 @@ from fastapi import FastAPI, HTTPException
 import structlog
 
 os.environ.setdefault("OTEL_SERVICE_NAME", "SampleServicePython")
-os.environ.setdefault("ENVIRONMENT", "Development")
+os.environ.setdefault("ENVIRONMENT", "Production")
+os.environ.setdefault("SERVICE_VERSION", "1.0.0")
 os.environ.setdefault("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317")
 
 from app.observability import init_observability, instrument_app, TelemetryHelper
@@ -40,15 +41,33 @@ def get_weather_forecast(days: int):
     """Get weather forecast for specified number of days (max 5)"""
     import random
     from datetime import datetime, timedelta
+    from opentelemetry import trace
     
     if days > 5:
         log = structlog.get_logger("main.controllers.WeatherForecastController")
+        
+        span = trace.get_current_span()
+        ctx = span.get_span_context() if span else None
+        trace_id = format(ctx.trace_id, "032x") if ctx and ctx.trace_id != 0 else None
+        span_id = format(ctx.span_id, "016x") if ctx and ctx.span_id != 0 else None
+        
         log.error(
             f"Validation failed in WeatherForecastController.GetByDays: days={days}",
+            traceId=trace_id,
+            spanId=span_id,
             Days=days,
             Action="GetByDays",
             Controller="WeatherForecastController",
             RequestPath=f"/weatherforecast/days/{days}",
+            error={
+                "type": "ValidationException",
+                "message": f"Days must be 5 or less. Requested: {days}",
+                "code": "WEATHER_001"
+            },
+            context={
+                "days": days,
+                "maxAllowed": 5
+            },
             message_template_text="Validation failed in {Controller}.{Action}: days={Days}"
         )
         raise HTTPException(status_code=400, detail=f"Days must be 5 or less. Requested: {days}")

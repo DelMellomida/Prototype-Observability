@@ -3,7 +3,7 @@
     "http": {
       "commandName": "Project",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_ENVIRONMENT": "Production",
         "OpenTelemetry__Enabled": "false"
       },
       "dotnetRunMessages": true,
@@ -12,13 +12,13 @@
     "https": {
       "commandName": "Project",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_ENVIRONMENT": "Production",
         
         "OpenTelemetry__Enabled": "true",
         "OpenTelemetry__OtlpEndpoint": "http://localhost:4317",
         
         "OTEL_SERVICE_NAME": "SampleServiceNET",
-        "OTEL_RESOURCE_ATTRIBUTES": "service.version=1.0.0,deployment.environment=Development",
+        "OTEL_RESOURCE_ATTRIBUTES": "service.version=1.0.0,deployment.environment=Production",
         
         "OTEL_DOTNET_EXPERIMENTAL_SQLCLIENT_ENABLE_TRACE_DB_QUERY_PARAMETERS": "true",
         "OTEL_DOTNET_EXPERIMENTAL_SQLCLIENT_ENABLE_TRACE_CONTEXT_PROPAGATION": "true"
@@ -32,7 +32,7 @@
       "environmentVariables": {
         "ASPNETCORE_HTTP_PORTS": "8080",
         
-        "ASPNETCORE_ENVIRONMENT": "Development", 
+        "ASPNETCORE_ENVIRONMENT": "Production", 
         
         "OpenTelemetry__Enabled": "true",
         "OpenTelemetry__OtlpEndpoint": "http://otel-collector:4317", 

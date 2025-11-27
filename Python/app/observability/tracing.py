@@ -16,7 +16,7 @@ def init_tracing(service_name: Optional[str] = None, otlp_endpoint: Optional[str
     
     resource = Resource.create({
         "service.name": service_name,
-        "service.version": "1.0.0",
+        "service.version": os.getenv("SERVICE_VERSION", "1.0.0"),
         "deployment.environment": os.getenv("ENVIRONMENT", "development"),
     })
 

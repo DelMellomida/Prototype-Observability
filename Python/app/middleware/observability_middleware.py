@@ -1,190 +1,192 @@
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
-from starlette.responses import Response
-from opentelemetry import trace
-from opentelemetry.trace.status import Status, StatusCode
-import structlog
 import time
 import uuid
-import socket
-
-log = structlog.get_logger()
+import structlog
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from opentelemetry import trace
 
 
 class ObservabilityMiddleware(BaseHTTPMiddleware):
-    """
-    Middleware to enrich spans with HTTP semantic attributes and log requests
-    in a format similar to .NET's observability middleware.
-    """
-
-    def __init__(self, app):
-        super().__init__(app)
-        self.hostname = socket.gethostname()
-
-    async def dispatch(self, request: Request, call_next):
-        request_id = request.headers.get("X-Request-Id") or str(uuid.uuid4())
-        start = time.time()
-
-        # Extract request details
-        method = request.method
-        scheme = request.url.scheme
-        host = request.url.hostname or ""
-        port = request.url.port
-        path = request.url.path
-        query_string = str(request.url.query) if request.url.query else ""
+    """Enhanced middleware for structured logging with OpenTelemetry integration."""
+    
+    def _extract_user_context(self, request: Request) -> dict:
+        """Extract user context from request (customize based on your auth implementation)."""
+        user_context = {}
         
-        # Get client info
-        client_host = ""
-        if request.client:
-            client_host = getattr(request.client, "host", "")
+        # Example: Extract from JWT token or session
+        # This is a placeholder - implement based on your authentication method
+        auth_header = request.headers.get("authorization", "")
+        if auth_header:
+            # TODO: Decode JWT and extract user information
+            # user_context["id"] = decoded_token.get("sub")
+            # user_context["tenantId"] = decoded_token.get("tenant_id")
+            # user_context["role"] = decoded_token.get("role")
+            pass
         
-        connection_id = request.headers.get("Connection-Id", request_id[:16])
+        # Example: Extract from custom headers
+        user_id = request.headers.get("x-user-id")
+        tenant_id = request.headers.get("x-tenant-id")
         
-        # Get protocol version
-        protocol = "HTTP/1.1"
-        http_version = request.scope.get("http_version", "1.1")
-        protocol = f"HTTP/{http_version}"
-
-        # Build host string
-        host_with_port = f"{host}:{port}" if port and port not in [80, 443] else host
-        query_part = f"?{query_string}" if query_string else ""
-
-        try:
-            # Process request - this is where FastAPI instrumentation creates the span
-            response = await call_next(request)
-
-            # NOW get the span context AFTER the request is processed
-            span = trace.get_current_span()
-            trace_id = ""
-            span_id = ""
-            parent_span_id = "0000000000000000"
+        if user_id:
+            user_context["id"] = user_id
+        if tenant_id:
+            user_context["tenantId"] = tenant_id
             
-            if span is not None:
-                try:
-                    ctx = span.get_span_context()
-                    if ctx and ctx.trace_id and ctx.trace_id != 0:
-                        trace_id = format(ctx.trace_id, "032x")
-                        span_id = format(ctx.span_id, "016x")
-                        print(f"DEBUG: Captured trace context - TraceId: {trace_id}, SpanId: {span_id}", flush=True)
-                    else:
-                        print(f"DEBUG: Span context is invalid or zero", flush=True)
-                except Exception as e:
-                    print(f"DEBUG: Error getting span context: {e}", flush=True)
-            else:
-                print(f"DEBUG: No active span found", flush=True)
-
-            # Calculate duration
-            elapsed_ms = round((time.time() - start) * 1000, 4)
-
+        return user_context if user_context else None
+    
+    def _get_client_country(self, ip: str) -> str:
+        """Get country from IP address (placeholder - requires GeoIP database)."""
+        # TODO: Implement GeoIP lookup if needed
+        # Example using geoip2:
+        # try:
+        #     import geoip2.database
+        #     reader = geoip2.database.Reader('/path/to/GeoLite2-Country.mmdb')
+        #     response = reader.country(ip)
+        #     return response.country.iso_code
+        # except:
+        #     return None
+        return None
+    
+    async def dispatch(self, request: Request, call_next):
+        start_time = time.time()
+        log = structlog.get_logger("app.middleware.observability_middleware")
+        
+        # Extract trace context
+        span = trace.get_current_span()
+        ctx = span.get_span_context() if span else None
+        
+        trace_id = format(ctx.trace_id, "032x") if ctx and ctx.trace_id != 0 else "00000000000000000000000000000000"
+        span_id = format(ctx.span_id, "016x") if ctx and ctx.span_id != 0 else "0000000000000000"
+        
+        # Extract client information
+        client_host = request.client.host if request.client else "unknown"
+        user_agent = request.headers.get("user-agent", "")
+        
+        # Generate unique request ID
+        request_id = str(uuid.uuid4())
+        
+        # Extract user context (if authenticated)
+        user_context = self._extract_user_context(request)
+        
+        # Build client object
+        client_info = {"ip": client_host}
+        country = self._get_client_country(client_host)
+        if country:
+            client_info["country"] = country
+        
+        # Build HTTP object
+        http_info = {
+            "method": request.method,
+            "path": str(request.url.path),
+            "scheme": request.url.scheme,
+            "host": request.url.hostname,
+            "userAgent": user_agent,
+        }
+        
+        # Add query string if present
+        if request.url.query:
+            http_info["queryString"] = str(request.url.query)
+        
+        # Build base log context
+        log_context = {
+            "traceId": trace_id,
+            "spanId": span_id,
+            "http": http_info,
+            "client": client_info,
+            "requestId": request_id,
+            "Protocol": f"HTTP/{request.scope.get('http_version', '1.1')}",
+        }
+        
+        # Add user context if available
+        if user_context:
+            log_context["user"] = user_context
+        
+        # Log request started
+        log.info("Request started", **log_context)
+        
+        try:
+            response = await call_next(request)
+            duration_ms = (time.time() - start_time) * 1000
+            
             # Get response details
             status_code = response.status_code
+            content_length = response.headers.get("content-length", "0")
             content_type = response.headers.get("content-type", "")
-            content_length = response.headers.get("content-length", "")
-
-            # Update span with additional attributes
-            if span is not None:
-                try:
-                    span.set_attribute("http.method", method)
-                    span.set_attribute("http.status_code", status_code)
-                    span.set_attribute("StatusCode", status_code)
-                    span.set_attribute("ElapsedMilliseconds", elapsed_ms)
-                    span.set_attribute("ContentType", content_type)
-                    span.set_attribute("ContentLength", content_length)
-                    span.set_attribute("RequestId", request_id)
-                    span.set_attribute("ConnectionId", connection_id)
-                    
-                    if status_code >= 500:
-                        span.set_status(Status(StatusCode.ERROR, f"HTTP {status_code}"))
-                except Exception as e:
-                    print(f"Error updating span: {e}", flush=True)
-
-            # Build detailed finish message
-            finish_message = f"Request finished {protocol} {method} {scheme}://{host_with_port}{path}{query_part} - {status_code} {content_length} {content_type} {elapsed_ms}ms"
-
-            # Log completion
-            log_method = log.info
+            
+            # Determine log level based on status code
             if status_code >= 500:
                 log_method = log.error
             elif status_code >= 400:
                 log_method = log.warning
-
-            try:
-                log_method(
-                    finish_message,
-                    ElapsedMilliseconds=elapsed_ms,
-                    StatusCode=status_code,
-                    ContentType=content_type,
-                    ContentLength=content_length,
-                    Protocol=protocol,
-                    Method=method,
-                    Scheme=scheme,
-                    Host=host_with_port,
-                    PathBase="",
-                    Path=path,
-                    QueryString=query_part,
-                    RequestId=request_id,
-                    ConnectionId=connection_id,
-                    RequestPath=path,
-                    TraceId=trace_id,
-                    SpanId=span_id,
-                    ParentId=parent_span_id,
-                    message_template_text="Request finished {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {StatusCode} {ContentLength} {ContentType} {ElapsedMilliseconds}ms",
-                )
-            except Exception as e:
-                print(f"Error logging request finish: {e}", flush=True)
-
+            else:
+                log_method = log.info
+            
+            # Update HTTP info with response details
+            http_info_complete = http_info.copy()
+            http_info_complete.update({
+                "statusCode": status_code,
+                "duration": duration_ms,
+            })
+            
+            # Build complete log context
+            complete_context = {
+                "traceId": trace_id,
+                "spanId": span_id,
+                "http": http_info_complete,
+                "client": client_info,
+                "requestId": request_id,
+                "Protocol": f"HTTP/{request.scope.get('http_version', '1.1')}",
+                "StatusCode": status_code,
+                "ContentLength": content_length,
+                "ContentType": content_type,
+                "ElapsedMilliseconds": duration_ms,
+                "RequestPath": str(request.url.path),
+                "message_template_text": "Request finished {Protocol} {Method} {Scheme}://{Host}{Path} - {StatusCode} {ContentLength} {ContentType} {ElapsedMilliseconds}ms",
+            }
+            
+            # Add user context if available
+            if user_context:
+                complete_context["user"] = user_context
+            
+            # Log request finished
+            log_method(
+                f"Request finished {request.scope.get('http_version', 'HTTP/1.1')} {request.method} "
+                f"{request.url.scheme}://{request.url.hostname}{request.url.path} - "
+                f"{status_code} {content_length} {content_type} {duration_ms:.3f}ms",
+                **complete_context
+            )
+            
             return response
-
-        except Exception as exc:
-            elapsed_ms = round((time.time() - start) * 1000, 4)
             
-            # Record exception on span and get trace context
-            span = trace.get_current_span()
-            trace_id = ""
-            span_id = ""
-            parent_span_id = "0000000000000000"
+        except Exception as e:
+            duration_ms = (time.time() - start_time) * 1000
             
-            if span is not None:
-                try:
-                    span.record_exception(exc)
-                    span.set_status(Status(StatusCode.ERROR, str(exc)))
-                    span.set_attribute("exception.type", type(exc).__name__)
-                    span.set_attribute("exception.message", str(exc))
-                    
-                    ctx = span.get_span_context()
-                    if ctx and ctx.trace_id and ctx.trace_id != 0:
-                        trace_id = format(ctx.trace_id, "032x")
-                        span_id = format(ctx.span_id, "016x")
-                except Exception:
-                    pass
-
-            error_message = f"Request failed {protocol} {method} {scheme}://{host_with_port}{path}{query_part} - {type(exc).__name__}: {str(exc)}"
-
-            try:
-                log.error(
-                    error_message,
-                    exception=str(exc),
-                    exception_type=type(exc).__name__,
-                    ElapsedMilliseconds=elapsed_ms,
-                    Protocol=protocol,
-                    Method=method,
-                    Scheme=scheme,
-                    Host=host_with_port,
-                    Path=path,
-                    PathBase="",
-                    QueryString=query_part,
-                    RequestId=request_id,
-                    ConnectionId=connection_id,
-                    RequestPath=path,
-                    TraceId=trace_id,
-                    SpanId=span_id,
-                    ParentId=parent_span_id,
-                    trace_id=trace_id,
-                    span_id=span_id,
-                    parent_span_id=parent_span_id,
-                    message_template_text="Request failed {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {exception_type}: {exception}",
-                )
-            except Exception:
-                pass
-
+            # Update HTTP info with duration
+            http_info_error = http_info.copy()
+            http_info_error["duration"] = duration_ms
+            
+            # Build error log context
+            error_context = {
+                "traceId": trace_id,
+                "spanId": span_id,
+                "http": http_info_error,
+                "client": client_info,
+                "error": {
+                    "type": type(e).__name__,
+                    "message": str(e),
+                },
+                "requestId": request_id,
+                "ElapsedMilliseconds": duration_ms,
+                "RequestPath": str(request.url.path),
+            }
+            
+            # Add user context if available
+            if user_context:
+                error_context["user"] = user_context
+            
+            # Log exception
+            log.error(
+                f"Request failed: {str(e)}",
+                **error_context
+            )
             raise

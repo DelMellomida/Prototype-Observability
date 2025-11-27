@@ -110,6 +110,11 @@ export ENVIRONMENT="Development"
 
 ### Step 2: Start OpenTelemetry Collector
 
+**Make sure to pull the Opentelemetry Collector from docker**
+```bash
+docker pull otel/opentelemetry-collector-contrib:sha256-951cf2231ef678628df29d584d89a03fd4173107a54db9678c9e65a9c172c915.sig
+```
+
 The collector receives telemetry data from your applications and forwards it to SigNoz.
 
 ```bash
