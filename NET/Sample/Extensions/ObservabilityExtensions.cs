@@ -1,4 +1,5 @@
 using OpenTelemetry.Exporter;
+using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -14,7 +15,7 @@ public static class ObservabilityExtensions
     public static void AddCompanyObservability(this WebApplicationBuilder builder)
     {
         // 1. Load Configuration
-        var serviceName = builder.Configuration.GetValue<string>("OTEL_SERVICE_NAME", "SampleService");
+        var serviceName = builder.Configuration.GetValue<string>("OTEL_SERVICE_NAME", "SampleServiceNET");
         var otlpEndpoint = builder.Configuration.GetValue<string>("OpenTelemetry:OtlpEndpoint", "http://localhost:4317");
         var enableOtel = builder.Configuration.GetValue<bool>("OpenTelemetry:Enabled", true);
 
@@ -25,7 +26,7 @@ public static class ObservabilityExtensions
             ["service.instance.id"] = Environment.MachineName
         };
 
-        // 2. Configure Serilog
+        // 2. Configure Serilog + OpenTelemetry logging pipeline
         builder.Logging.ClearProviders();
         var loggerConfig = new LoggerConfiguration()
             .Enrich.FromLogContext()
@@ -34,11 +35,12 @@ public static class ObservabilityExtensions
             .Enrich.WithProperty("environment", builder.Environment.EnvironmentName)
             .WriteTo.Console(new JsonFormatter(renderMessage: true));
 
+        // Add OpenTelemetry sink for Serilog when enabled so logs also flow to OTLP backends
         if (enableOtel)
         {
             loggerConfig.WriteTo.OpenTelemetry(options =>
             {
-                options.Endpoint = otlpEndpoint;
+                options.Endpoint = otlpEndpoint; // Serilog sink expects string endpoint
                 options.Protocol = OtlpProtocol.Grpc;
                 options.ResourceAttributes = resourceAttributes;
             });
@@ -47,21 +49,19 @@ public static class ObservabilityExtensions
         var logger = loggerConfig.CreateLogger();
         Log.Logger = logger;
         builder.Logging.AddSerilog(logger);
-        builder.Services.AddSerilog(logger);
 
         // 3. Register ActivitySource & Helper
         var activitySource = new ActivitySource(serviceName);
         builder.Services.AddSingleton(activitySource);
         builder.Services.AddSingleton<ITelemetryHelper, TelemetryHelper>();
 
-        // 4. Configure OpenTelemetry
+        // 4. Configure OpenTelemetry (traces + metrics + optional log exporter via Serilog sink)
         if (enableOtel)
         {
             // Sampling Logic
             var configuredSampling = builder.Configuration.GetValue<double?>("OpenTelemetry:SamplingRatio");
             double defaultSampling = builder.Environment.IsDevelopment() ? 1.0 : 0.1;
             var samplingRatio = configuredSampling ?? defaultSampling;
-            
             var sampler = new ParentBasedSampler(new TraceIdRatioBasedSampler(samplingRatio));
 
             builder.Services.AddOpenTelemetry()
@@ -78,16 +78,17 @@ public static class ObservabilityExtensions
                 .WithTracing(tracing =>
                 {
                     tracing
-                        .AddSource(serviceName) // Important!
+                        .AddSource(serviceName) // Important: create spans from our ActivitySource
                         .SetSampler(sampler)
                         .AddAspNetCoreInstrumentation(options =>
                         {
-                            // We are using manual middleware for exceptions, so disable auto-record
-                            options.RecordException = false; 
+                            // Middleware handles exceptions explicitly
+                            options.RecordException = false;
                             options.EnrichWithHttpRequest = (activity, req) =>
                             {
                                 activity.SetTag("http.method", req.Method);
                                 activity.SetTag("http.target", req.Path);
+                                activity.SetTag("http.host", req.Host.Value);
                             };
                             options.EnrichWithHttpResponse = (activity, resp) =>
                             {

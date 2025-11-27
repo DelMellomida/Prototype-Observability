@@ -5,3 +5,5 @@ if error "Ports are not available: listen tcp 0.0.0.0/XXXXX: bind: An attempt wa
 net stop winnat
 docker start otel-collector
 net start winnat
+
+or just run run-collector.ps1

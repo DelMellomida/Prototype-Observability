@@ -1,0 +1,17 @@
+# Local secrets
+config/collector.env
+
+# Python virtualenv
+venv/
+Python/venv/
+Python/.env
+
+# Byte-compiled / distribution
+__pycache__/
+*.py[cod]
+
+# VS Code
+.vscode/
+
+# Misc
+*.log

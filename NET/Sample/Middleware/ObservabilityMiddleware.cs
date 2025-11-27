@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using Serilog;
 
 public class ObservabilityMiddleware
@@ -14,36 +16,53 @@ public class ObservabilityMiddleware
 
     public async Task InvokeAsync(HttpContext context)
     {
+        // Invoke next middleware and capture response status or exceptions
         try
         {
             await _next(context);
-            
-            // Handle 4xx/5xx that aren't exceptions (like 404s)
+
+            // Ensure http.status_code is present on current activity
+            var activity = Activity.Current;
+            activity?.SetTag("http.response.status_code", context.Response.StatusCode);
+
             if (context.Response.StatusCode >= 400)
             {
-                var level = context.Response.StatusCode >= 500 ? LogLevel.Error : LogLevel.Warning;
-                _logger.Log(level, "Request {Path} returned {StatusCode}", context.Request.Path, context.Response.StatusCode);
+                if (context.Response.StatusCode >= 500)
+                {
+                    _logger.LogError("Request {Path} returned {StatusCode}", context.Request.Path, context.Response.StatusCode);
+                    activity?.SetStatus(ActivityStatusCode.Error, $"HTTP {context.Response.StatusCode}");
+                }
+                else
+                {
+                    _logger.LogWarning("Request {Path} returned {StatusCode}", context.Request.Path, context.Response.StatusCode);
+                }
             }
         }
         catch (Exception ex)
         {
-            RecordException(ex);
-            throw; // Re-throw so the framework knows it failed
+            RecordException(ex, context);
+            throw; // Re-throw to allow the framework to handle it
         }
     }
 
-    private void RecordException(Exception ex)
+    // Record exception details to current activity and structured logs
+    private void RecordException(Exception ex, HttpContext context)
     {
         var activity = Activity.Current;
         if (activity != null)
         {
             activity.SetStatus(ActivityStatusCode.Error, ex.Message);
-            activity.AddException(ex);
             activity.SetTag("exception.type", ex.GetType().FullName);
+            activity.SetTag("exception.message", ex.Message);
+            activity.SetTag("http.request.path", context.Request.Path);
+            activity.AddEvent(new ActivityEvent("exception", default, new ActivityTagsCollection
+            {
+                ["exception.type"] = ex.GetType().FullName,
+                ["exception.message"] = ex.Message
+            }));
         }
 
-        // Serilog will pick up TraceId/SpanId from the Activity automatically
-        _logger.LogError(ex, "Unhandled exception occurred");
+        _logger.LogError(ex, "Unhandled exception processing request {Path}", context.Request.Path);
     }
 }
 

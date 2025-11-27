@@ -13,15 +13,15 @@
       "commandName": "Project",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
+        
         "OpenTelemetry__Enabled": "true",
         "OpenTelemetry__OtlpEndpoint": "http://localhost:4317",
+        
+        "OTEL_SERVICE_NAME": "SampleServiceNET",
+        "OTEL_RESOURCE_ATTRIBUTES": "service.version=1.0.0,deployment.environment=Development",
+        
         "OTEL_DOTNET_EXPERIMENTAL_SQLCLIENT_ENABLE_TRACE_DB_QUERY_PARAMETERS": "true",
-        "OTEL_DOTNET_EXPERIMENTAL_SQLCLIENT_ENABLE_TRACE_CONTEXT_PROPAGATION": "true",
-        "OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4317",
-        "OTEL_EXPORTER_OTLP_PROTOCOL": "grpc",
-        "OTEL_SERVICE_NAME": "SampleService",
-        "OTEL_SERVICE_VERSION": "1.0.0",
-        "OTEL_RESOURCE_ATTRIBUTES": "service.version=1.0.0,deployment.environment=Development"
+        "OTEL_DOTNET_EXPERIMENTAL_SQLCLIENT_ENABLE_TRACE_CONTEXT_PROPAGATION": "true"
       },
       "dotnetRunMessages": true,
       "applicationUrl": "https://localhost:7001;http://localhost:5255"
@@ -30,16 +30,18 @@
       "commandName": "Docker",
       "launchUrl": "{Scheme}://{ServiceHost}:{ServicePort}",
       "environmentVariables": {
-        "ASPNETCORE_HTTPS_PORTS": "8081",
         "ASPNETCORE_HTTP_PORTS": "8080",
-        "ASPNETCORE_ENVIRONMENT": "Production",
+        
+        "ASPNETCORE_ENVIRONMENT": "Development", 
+        
         "OpenTelemetry__Enabled": "true",
-        "OpenTelemetry__OtlpEndpoint": "http://otel-collector:4317",
+        "OpenTelemetry__OtlpEndpoint": "http://otel-collector:4317", 
+        
+        "OTEL_SERVICE_NAME": "SampleServiceNET",
+        "OTEL_RESOURCE_ATTRIBUTES": "service.version=1.0.0,deployment.environment=DockerLocal",
+        
         "OTEL_DOTNET_EXPERIMENTAL_SQLCLIENT_ENABLE_TRACE_DB_QUERY_PARAMETERS": "false",
-        "OTEL_DOTNET_EXPERIMENTAL_SQLCLIENT_ENABLE_TRACE_CONTEXT_PROPAGATION": "true",
-        "OTEL_EXPORTER_OTLP_ENDPOINT": "http://otel-collector:4317",
-        "OTEL_EXPORTER_OTLP_PROTOCOL": "grpc",
-        "OTEL_SERVICE_NAME": "SampleService"
+        "OTEL_DOTNET_EXPERIMENTAL_SQLCLIENT_ENABLE_TRACE_CONTEXT_PROPAGATION": "true"
       },
       "publishAllPorts": true,
       "useSSL": false

@@ -20,6 +20,9 @@ processors:
       - key: service.namespace
         value: "production"
         action: insert
+      - key: service.name
+        value: ${env:OTEL_SERVICE_NAME}
+        action: insert
   
   attributes:
     actions:
@@ -146,10 +149,13 @@ processors:
         value: ${env:HOSTNAME}
         action: upsert
   
-  filter:
-    traces:
-      span:
-        - 'attributes["service.name"] == "SampleService"'
+  # Filter processor removed to avoid dropping telemetry during local testing.
+  # If you want to filter by service name, re-add a filter processor with a
+  # safe expression that matches your service names. Example:
+  # filter:
+  #   traces:
+  #     span:
+  #       - 'resource.attributes["service.name"] == "SampleService"'
   
   resourcedetection:
     detectors: [env, system]
@@ -159,21 +165,21 @@ exporters:
   otlp/traces:
     endpoint: "ingest.us.signoz.cloud:443"
     headers:
-      "signoz-ingestion-key": "ea2516c8-7bb0-4170-af62-107e9cb841bc"
+      "signoz-ingestion-key": "${env:SIGNOZ_INGESTION_KEY}"
     tls:
       insecure: false
 
   otlp/metrics:
     endpoint: "ingest.us.signoz.cloud:443"
     headers:
-      "signoz-ingestion-key": "ea2516c8-7bb0-4170-af62-107e9cb841bc"
+      "signoz-ingestion-key": "${env:SIGNOZ_INGESTION_KEY}"
     tls:
       insecure: false
 
   otlp/logs:
     endpoint: "ingest.us.signoz.cloud:443"
     headers:
-      "signoz-ingestion-key": "ea2516c8-7bb0-4170-af62-107e9cb841bc"
+      "signoz-ingestion-key": "${env:SIGNOZ_INGESTION_KEY}"
     tls:
       insecure: false
 
@@ -190,7 +196,7 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [memory_limiter, resourcedetection, resource, attributes, filter, batch]
+      processors: [memory_limiter, resourcedetection, resource, attributes, batch]
       exporters: [otlp/traces, debug]
     
     metrics:
@@ -201,4 +207,4 @@ service:
     logs:
       receivers: [otlp]
       processors: [memory_limiter, resourcedetection, resource, attributes, batch]
-      exporters: [otlp/logs]
+      exporters: [otlp/logs, debug]

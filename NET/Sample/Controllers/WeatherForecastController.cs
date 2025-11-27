@@ -63,8 +63,8 @@ namespace Sample.Controllers
                 activity?.SetTag("validation.failed", true);
                 activity?.SetTag("error.type", "ValidationError");
 
-                // Log validation failure as Critical
-                _logger.LogCritical("Validation failed in {Controller}.{Action}: days={Days}",
+                // Log validation failure as Error
+                _logger.LogError("Validation failed in {Controller}.{Action}: days={Days}",
                     nameof(WeatherForecastController), nameof(GetByDays), days);
 
                 return BadRequest(new { error = "Days must be between 1 and 5" });
